@@ -7,11 +7,21 @@ const PrintIntl = new Intl.DateTimeFormat('en-GB', {
   minute: 'numeric'
 })
 
-function table(tasks: Task[]) {
-  l('ID \tSTART \tINFO')
-  for (const task of tasks) {
-    const start = PrintIntl.format(task.start)
-    l(`${task.id} \t${start} \t${task.info}`)
+const time = {
+  string(d: Date): string {
+    return PrintIntl.format(d)
+  },
+
+  duration(millis: number): string {
+    const mins = millis / (1000 * 60)
+
+    if (mins < 60) {
+      return `${Math.ceil(mins)}m`
+    } else {
+      const hours = Math.ceil(mins / 60)
+      const rem = Math.ceil(mins % 60)
+      return `${hours}h ${rem}m`
+    }
   }
 }
 
@@ -73,6 +83,14 @@ class Tasks {
     return this._data.filter(task => task.end === null)
   }
 
+  /**
+   * Get all tasks that were closed today (same day as the function call)
+   */
+  getDoneToday(): Task[] {
+    const today = (new Date()).getDate()
+    return this._data.filter(task => task.end !== null && task.end.getDate() === today)
+  }
+
   async load() {
     const file = Bun.file(TASKS_DB_PATH)
     const exists = await file.exists()
@@ -102,6 +120,7 @@ const cmds = {
       case "start":
       case "end":
       case "ls":
+      case "today":
         return true;
       default:
         return false;
@@ -129,7 +148,33 @@ const cmds = {
       return
     }
 
-    table(active)
+    l('ID \tSTART \tINFO')
+    for (const task of active) {
+      const start = time.string(task.start)
+      l(`${task.id} \t${start} \t${task.info}`)
+    }
+  },
+
+  today() {
+    const done = tasks.getDoneToday()
+    const times = done.map(task => ({
+      id: task.id,
+      info: task.info,
+      duration: Math.abs(task.end.getTime() - task.start.getTime())
+    }))
+
+    // descending order of duration
+    times.sort((a, b) =>
+      a.duration < b.duration ? 1 :
+        a.duration > b.duration ? -1 :
+          0
+    )
+
+    l('ID \tDURATION \tINFO')
+    for (const task of times) {
+      const duration = time.duration(task.duration)
+      l(`${task.id} \t${duration} \t${task.info}`)
+    }
   }
 }
 
@@ -146,6 +191,7 @@ async function main(argv: string[]) {
     case "start": cmds.start(); break;
     case "end"  : cmds.end();   break;
     case "ls"   : cmds.ls();    break;
+    case "today": cmds.today(); break;
     case "help":
     default:
       printUsage()
