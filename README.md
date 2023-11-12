@@ -6,6 +6,8 @@ Requires [Bun](https://bun.sh/) to be installed and on PATH.
 
 Symlink the script `bin/trakr` somewhere in your PATH. Run `trakr help` for available commands.
 
+Saves all data to `$HOME/.journal/trakr.json`
+
 ## Developing
 
 To install dependencies:
