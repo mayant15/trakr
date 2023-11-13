@@ -113,6 +113,50 @@ class Tasks {
 
 const tasks = new Tasks()
 
+function printActiveTasks(active: Task[]) {
+  if (active.length === 0) {
+    l("No active tasks.")
+    return
+  }
+
+  l('Active tasks:\n')
+
+  l('ID \tSTART \tINFO')
+  for (const task of active) {
+    const start = time.string(task.start)
+    l(`${task.id} \t${start} \t${task.info}`)
+  }
+}
+
+function printTodaySummary(done: Task[]) {
+  if (done.length === 0) {
+    l('No completed tasks today.')
+    return
+  }
+
+  const times = done.map(task => ({
+    ...task,
+    duration: Math.abs(task.end.getTime() - task.start.getTime())
+  }))
+
+  // descending order of duration
+  times.sort(
+    (a, b) =>
+      a.duration < b.duration ? 1 :
+        a.duration > b.duration ? -1 :
+          0
+  )
+
+  l('Completed tasks:\n')
+
+  l('ID \tSTART \tDURATION \tINFO')
+  for (const task of times) {
+    const duration = time.duration(task.duration)
+    const start = time.string(task.start)
+    l(`${task.id} \t${start} \t${duration} \t${task.info}`)
+  }
+}
+
 const cmds = {
   isSupported(cmd: string) {
     switch (cmd) {
@@ -120,7 +164,6 @@ const cmds = {
       case "start":
       case "end":
       case "ls":
-      case "today":
         return true;
       default:
         return false;
@@ -143,38 +186,11 @@ const cmds = {
 
   ls() {
     const active = tasks.getActive()
-    if (active.length === 0) {
-      l("No active tasks.")
-      return
-    }
+    const doneToday = tasks.getDoneToday()
 
-    l('ID \tSTART \tINFO')
-    for (const task of active) {
-      const start = time.string(task.start)
-      l(`${task.id} \t${start} \t${task.info}`)
-    }
-  },
-
-  today() {
-    const done = tasks.getDoneToday()
-    const times = done.map(task => ({
-      id: task.id,
-      info: task.info,
-      duration: Math.abs(task.end.getTime() - task.start.getTime())
-    }))
-
-    // descending order of duration
-    times.sort((a, b) =>
-      a.duration < b.duration ? 1 :
-        a.duration > b.duration ? -1 :
-          0
-    )
-
-    l('ID \tDURATION \tINFO')
-    for (const task of times) {
-      const duration = time.duration(task.duration)
-      l(`${task.id} \t${duration} \t${task.info}`)
-    }
+    printActiveTasks(active)
+    l('')
+    printTodaySummary(doneToday)
   }
 }
 
@@ -191,7 +207,6 @@ async function main(argv: string[]) {
     case "start": cmds.start(); break;
     case "end"  : cmds.end();   break;
     case "ls"   : cmds.ls();    break;
-    case "today": cmds.today(); break;
     case "help":
     default:
       printUsage()
